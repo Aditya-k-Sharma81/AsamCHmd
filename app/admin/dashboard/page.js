@@ -21,6 +21,19 @@ export default async function AdminDashboardPage() {
   const pendingRequestsCount = await prisma.productRequest.count({ where: { status: 'PENDING' } });
   const pendingOrdersCount = await prisma.quotation.count({ where: { status: 'PENDING' } });
 
+  // Calculate total system revenue from non-pending/non-rejected orders
+  const approvedQuotations = await prisma.quotation.findMany({
+    where: {
+      status: {
+        in: ['APPROVED', 'SHIPPED', 'DELIVERED', 'COMPLETED']
+      }
+    },
+    select: {
+      totalAmount: true
+    }
+  });
+  const totalRevenue = approvedQuotations.reduce((sum, q) => sum + Number(q.totalAmount), 0);
+
   // Get recent quotations
   const recentQuotations = await prisma.quotation.findMany({
     take: 5,
@@ -42,7 +55,7 @@ export default async function AdminDashboardPage() {
   const stats = [
     { name: 'Total Customers', value: userCount, icon: '👥', color: 'from-emerald-500/10 to-teal-500/5', border: 'border-emerald-500/20', text: 'text-emerald-400' },
     { name: 'Total Sellers', value: sellerCount, icon: '💼', color: 'from-indigo-500/10 to-blue-500/5', border: 'border-indigo-500/20', text: 'text-indigo-400' },
-    { name: 'Total Products', value: productCount, icon: '🧪', color: 'from-violet-500/10 to-purple-500/5', border: 'border-violet-500/20', text: 'text-violet-400' },
+    { name: 'System Revenue (INR)', value: formatCurrency(totalRevenue), icon: '💰', color: 'from-violet-500/10 to-purple-500/5', border: 'border-violet-500/20', text: 'text-violet-400' },
     { name: 'Total Quotations', value: orderCount, icon: '📄', color: 'from-amber-500/10 to-orange-500/5', border: 'border-amber-500/20', text: 'text-amber-400' },
   ];
 

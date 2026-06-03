@@ -58,12 +58,12 @@ export default async function SellerDashboardPage() {
   // Calculate stats
   const totalOrdersCount = sellerQuotations.length;
   const pendingOrdersCount = sellerQuotations.filter(q => q.status === 'PENDING').length;
-  const approvedOrdersCount = sellerQuotations.filter(q => q.status === 'APPROVED' || q.status === 'COMPLETED').length;
+  const approvedOrdersCount = sellerQuotations.filter(q => ['APPROVED', 'SHIPPED', 'DELIVERED', 'COMPLETED'].includes(q.status)).length;
   
   // Calculate total revenue for this seller's products
   let totalRevenue = 0;
   sellerQuotations.forEach(q => {
-    if (q.status === 'APPROVED' || q.status === 'COMPLETED') {
+    if (['APPROVED', 'SHIPPED', 'DELIVERED', 'COMPLETED'].includes(q.status)) {
       q.items.forEach(item => {
         totalRevenue += Number(item.calculatedPrice);
       });
