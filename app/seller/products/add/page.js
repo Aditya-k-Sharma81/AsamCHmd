@@ -59,7 +59,12 @@ export default function SellerAddProductPage(props) {
         }
       } else if (prefillStr) {
         try {
-          const prefill = JSON.parse(decodeURIComponent(prefillStr));
+          let prefill;
+          try {
+            prefill = JSON.parse(prefillStr);
+          } catch {
+            prefill = JSON.parse(decodeURIComponent(prefillStr));
+          }
           setFormName(prefill.name || '');
           setFormDimension(prefill.dimension || 'WEIGHT');
           setFormBaseUnit(prefill.unit || 'kg');
@@ -68,7 +73,7 @@ export default function SellerAddProductPage(props) {
             setFormStockQuantity(prefill.qty.toString());
           }
         } catch (err) {
-          console.error(err);
+          console.error('Failed to parse prefill parameter:', err);
         }
       }
     };
