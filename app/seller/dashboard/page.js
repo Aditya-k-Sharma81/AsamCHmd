@@ -43,6 +43,7 @@ export default async function SellerDashboardPage() {
       },
     },
     include: {
+      user: { select: { name: true } },
       items: {
         where: {
           product: {

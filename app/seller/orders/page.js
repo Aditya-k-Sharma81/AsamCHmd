@@ -26,6 +26,25 @@ export default function SellerOrdersPage() {
     fetchQuotations();
   }, []);
 
+  const handleUpdateQuotationStatus = async (id, status) => {
+    try {
+      const res = await fetch(`/api/quotations/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Failed to update order status');
+      } else {
+        fetchQuotations();
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const formatCurrency = (val) => {
     return new Intl.NumberFormat('en-IN', {
       style: 'currency',
@@ -152,6 +171,23 @@ export default function SellerOrdersPage() {
                 {/* Expanded details */}
                 {isExpanded && (
                   <div className="p-5 border-t border-neutral-850 bg-neutral-950/30 space-y-5 animate-slideDown">
+                    {/* Customer Contact & Delivery Info */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-neutral-900/40 p-4 border border-neutral-800 rounded-2xl text-xs text-neutral-300">
+                      <div>
+                        <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-wider block mb-1">Customer Details</span>
+                        <p className="font-extrabold text-neutral-100">{quote.user.name}</p>
+                        <p className="text-[11px] text-neutral-400 font-mono mt-0.5">{quote.user.email}</p>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-wider block mb-1">Contact Phone</span>
+                        <p className="font-bold text-neutral-200">{quote.user.phone || 'Not provided'}</p>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-neutral-500 font-bold uppercase tracking-wider block mb-1">Fulfillment Delivery Address</span>
+                        <p className="font-medium text-neutral-200 bg-neutral-950/40 p-2 border border-neutral-850 rounded-lg">{quote.user.address || 'Not provided'}</p>
+                      </div>
+                    </div>
+
                     <div className="overflow-x-auto border border-neutral-850 rounded-xl bg-neutral-900/20">
                       <table className="w-full text-left border-collapse text-xs">
                         <thead>
@@ -204,6 +240,107 @@ export default function SellerOrdersPage() {
                           </div>
                         ))}
                       </div>
+                    </div>
+
+                    {/* Visual Tracker */}
+                    {quote.status !== 'REJECTED' && (
+                      <div className="bg-neutral-900/40 p-4 border border-neutral-800 rounded-2xl space-y-3">
+                        <div className="flex items-center justify-between text-[10px] text-neutral-400 font-bold uppercase tracking-wider">
+                          <span>Order Status Tracking</span>
+                          <span className="text-emerald-400">
+                            {quote.status === 'PENDING' && 'Pending Seller Confirmation'}
+                            {quote.status === 'APPROVED' && 'Order Approved & Processing'}
+                            {quote.status === 'SHIPPED' && 'In Transit / Shipped'}
+                            {quote.status === 'DELIVERED' && 'Delivered'}
+                            {quote.status === 'COMPLETED' && 'Delivered & Completed'}
+                          </span>
+                        </div>
+                        <div className="relative flex items-center justify-between w-full mt-2 mb-2 px-2">
+                          {/* Background Progress Bar Line */}
+                          <div className="absolute left-0 right-0 h-0.5 bg-neutral-850 -translate-y-1/2 top-1/2 z-0" />
+                          
+                          {/* Active Progress Bar Line */}
+                          <div 
+                            className="absolute left-0 h-0.5 bg-emerald-500 -translate-y-1/2 top-1/2 z-0 transition-all duration-500"
+                            style={{
+                              width: 
+                                quote.status === 'PENDING' ? '0%' :
+                                quote.status === 'APPROVED' ? '33.33%' :
+                                quote.status === 'SHIPPED' ? '66.66%' :
+                                '100%'
+                            }}
+                          />
+
+                          {/* Step dots */}
+                          {[
+                            { label: 'Placed', active: true },
+                            { label: 'Approved', active: quote.status !== 'PENDING' },
+                            { label: 'Shipped', active: quote.status === 'SHIPPED' || quote.status === 'DELIVERED' || quote.status === 'COMPLETED' },
+                            { label: 'Delivered', active: quote.status === 'DELIVERED' || quote.status === 'COMPLETED' }
+                          ].map((step, idx) => (
+                            <div key={idx} className="relative z-10 flex flex-col items-center">
+                              <div className={`w-3.5 h-3.5 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${
+                                step.active 
+                                  ? 'bg-emerald-500 border-emerald-500 shadow-md shadow-emerald-500/20' 
+                                  : 'bg-neutral-900 border-neutral-700'
+                              }`}>
+                                {step.active && (
+                                  <svg className="w-1.5 h-1.5 text-neutral-950" fill="currentColor" viewBox="0 0 8 8">
+                                    <circle cx="4" cy="4" r="3" />
+                                  </svg>
+                                )}
+                              </div>
+                              <span className={`text-[9px] mt-1 font-bold ${step.active ? 'text-neutral-200' : 'text-neutral-500'}`}>
+                                {step.label}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Action Row */}
+                    <div className="flex justify-end space-x-3 pt-4 border-t border-neutral-850">
+                      {quote.status === 'PENDING' && (
+                        <>
+                          <button
+                            onClick={() => handleUpdateQuotationStatus(quote.id, 'REJECTED')}
+                            className="bg-rose-950/30 hover:bg-rose-900/50 text-rose-300 border border-rose-800/40 px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200"
+                          >
+                            Reject Order
+                          </button>
+                          <button
+                            onClick={() => handleUpdateQuotationStatus(quote.id, 'APPROVED')}
+                            className="bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-bold px-5 py-2.5 rounded-xl shadow-lg shadow-emerald-500/10 text-xs transition-all duration-200"
+                          >
+                            Accept Order
+                          </button>
+                        </>
+                      )}
+                      {quote.status === 'APPROVED' && (
+                        <button
+                          onClick={() => handleUpdateQuotationStatus(quote.id, 'SHIPPED')}
+                          className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs shadow-lg shadow-blue-600/10 transition-all duration-200"
+                        >
+                          Mark as Shipped
+                        </button>
+                      )}
+                      {quote.status === 'SHIPPED' && (
+                        <button
+                          onClick={() => handleUpdateQuotationStatus(quote.id, 'DELIVERED')}
+                          className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs shadow-lg shadow-indigo-600/10 transition-all duration-200"
+                        >
+                          Mark as Delivered
+                        </button>
+                      )}
+                      {quote.status === 'DELIVERED' && (
+                        <span className="text-emerald-400 font-bold text-xs flex items-center">
+                          <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          Order Delivered
+                        </span>
+                      )}
                     </div>
                   </div>
                 )}

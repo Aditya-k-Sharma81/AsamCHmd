@@ -41,6 +41,16 @@ export default function UserProfilePage() {
   
   const [profileName, setProfileName] = useState('Chemical Buyer');
   const [profileEmail, setProfileEmail] = useState('');
+  const [profilePhone, setProfilePhone] = useState('');
+  const [profileAddress, setProfileAddress] = useState('');
+
+  // Edit states
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editAddress, setEditAddress] = useState('');
+  const [editLoading, setEditLoading] = useState(false);
+  const [editError, setEditError] = useState('');
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -49,12 +59,8 @@ export default function UserProfilePage() {
         const res = await fetch('/api/quotations');
         if (res.ok) {
           const data = await res.json();
-          // Extract user info from first quotation if available
           if (data.length > 0) {
-            // Wait, user info is not included in user-side quotations list by default?
-            // Actually, in route.js, user relation is NOT included for user, but we can get it or write `/api/auth/me`!
-            // Let's write a small API at `/api/auth/me` to get the logged-in user profile details!
-            // This is super clean and works perfectly. Let's write it in a moment.
+            // Placeholder logic
           }
         }
         // Fetch from profile details endpoint
@@ -63,6 +69,11 @@ export default function UserProfilePage() {
           const profileData = await profileRes.json();
           setProfileName(profileData.name);
           setProfileEmail(profileData.email);
+          setProfilePhone(profileData.phone || 'Not provided');
+          setProfileAddress(profileData.address || 'Not provided');
+          setEditName(profileData.name);
+          setEditPhone(profileData.phone || '');
+          setEditAddress(profileData.address || '');
         }
       } catch (err) {
         console.error(err);
@@ -72,6 +83,31 @@ export default function UserProfilePage() {
     };
     fetchProfile();
   }, []);
+
+  const handleSaveProfile = async (e) => {
+    e.preventDefault();
+    setEditError('');
+    setEditLoading(true);
+    try {
+      const res = await fetch('/api/auth/me', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: editName, phone: editPhone, address: editAddress }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to update profile');
+      }
+      setProfileName(data.name);
+      setProfilePhone(data.phone || 'Not provided');
+      setProfileAddress(data.address || 'Not provided');
+      setIsEditing(false);
+    } catch (err) {
+      setEditError(err.message);
+    } finally {
+      setEditLoading(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -101,9 +137,23 @@ export default function UserProfilePage() {
               <span className="font-bold text-neutral-100">Customer / User</span>
             </div>
             <div className="flex justify-between">
+              <span className="text-neutral-500 font-semibold">Phone:</span>
+              <span className="font-bold text-neutral-100">{profilePhone}</span>
+            </div>
+            <div className="flex flex-col space-y-1">
+              <span className="text-neutral-500 font-semibold">Delivery Address:</span>
+              <span className="font-medium text-neutral-200 bg-neutral-950/40 p-2 border border-neutral-850 rounded-lg">{profileAddress}</span>
+            </div>
+            <div className="flex justify-between">
               <span className="text-neutral-500 font-semibold">Product Requests:</span>
               <span className="font-bold text-neutral-100">{requests.length} Requests</span>
             </div>
+            <button
+              onClick={() => setIsEditing(true)}
+              className="mt-4 w-full bg-neutral-800 hover:bg-neutral-700 text-neutral-200 border border-neutral-700 font-bold py-2.5 rounded-xl text-xs transition-colors"
+            >
+              Edit Contact Details
+            </button>
           </div>
         </div>
 
@@ -166,6 +216,92 @@ export default function UserProfilePage() {
           )}
         </div>
       </div>
+
+      {/* EDIT PROFILE MODAL */}
+      {isEditing && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="relative w-full max-w-md bg-neutral-900 border border-neutral-800 rounded-2xl p-6 shadow-2xl space-y-4">
+            <div className="flex justify-between items-center border-b border-neutral-800 pb-3">
+              <h3 className="font-extrabold text-sm uppercase tracking-wider text-neutral-100">
+                Edit Contact Details
+              </h3>
+              <button 
+                onClick={() => setIsEditing(false)}
+                className="text-neutral-500 hover:text-neutral-300 transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {editError && (
+              <div className="p-3 bg-rose-950/40 border border-rose-800/50 text-rose-300 rounded-xl text-xs">
+                {editError}
+              </div>
+            )}
+
+            <form onSubmit={handleSaveProfile} className="space-y-4 text-xs">
+              <div>
+                <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-2">Full Name</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Your Name"
+                  className="w-full bg-neutral-950 border border-neutral-800 focus:border-emerald-500/80 rounded-xl px-3 py-2.5 text-neutral-200 outline-none"
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-2">Phone Number</label>
+                <input
+                  type="tel"
+                  placeholder="e.g. +91 9876543210"
+                  className="w-full bg-neutral-950 border border-neutral-800 focus:border-emerald-500/80 rounded-xl px-3 py-2.5 text-neutral-200 outline-none"
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-2">Delivery Address</label>
+                <textarea
+                  placeholder="e.g. 123 Science Lab Lane, Mumbai"
+                  className="w-full bg-neutral-950 border border-neutral-800 focus:border-emerald-500/80 rounded-xl px-3 py-2 text-neutral-200 outline-none h-20 resize-none"
+                  value={editAddress}
+                  onChange={(e) => setEditAddress(e.target.value)}
+                />
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-3 border-t border-neutral-800">
+                <button
+                  type="button"
+                  onClick={() => setIsEditing(false)}
+                  className="bg-neutral-850 hover:bg-neutral-800 border border-neutral-800 text-neutral-400 px-4 py-2 rounded-xl text-xs font-bold transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={editLoading}
+                  className="bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-bold px-5 py-2.5 rounded-xl text-xs shadow-lg shadow-emerald-500/10 transition-colors flex items-center space-x-2"
+                >
+                  {editLoading ? (
+                    <svg className="animate-spin h-4 w-4 text-neutral-950" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <circle className="opacity-75" fill="currentColor" cx="12" cy="12" r="10" />
+                    </svg>
+                  ) : (
+                    <span>Save Changes</span>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

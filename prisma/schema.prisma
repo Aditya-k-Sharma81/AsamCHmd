@@ -23,6 +23,8 @@ enum OrderStatus {
   PENDING
   APPROVED
   REJECTED
+  SHIPPED
+  DELIVERED
   COMPLETED
 }
 
@@ -37,6 +39,8 @@ model User {
   password       String
   name           String
   role           Role             @default(USER)
+  address        String?
+  phone          String?
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
   products       Product[]        // Relationship for products added by sellers

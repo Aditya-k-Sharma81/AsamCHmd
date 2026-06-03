@@ -20,7 +20,7 @@ export async function GET(request) {
       // Admin sees all quotations with user info and all products
       quotations = await prisma.quotation.findMany({
         include: {
-          user: { select: { name: true, email: true } },
+          user: { select: { name: true, email: true, address: true, phone: true } },
           items: { include: { product: { include: { seller: { select: { name: true, email: true } } } } } },
         },
         orderBy: { createdAt: 'desc' },
@@ -39,7 +39,7 @@ export async function GET(request) {
           },
         },
         include: {
-          user: { select: { name: true, email: true } },
+          user: { select: { name: true, email: true, address: true, phone: true } },
           items: {
             where: {
               product: {
@@ -85,9 +85,8 @@ export async function POST(request) {
       return NextResponse.json({ error: 'No items selected' }, { status: 400 });
     }
 
-    // Prepare quotation items and calculate pricing
-    const quotationItemsData = [];
-    let totalAmount = new Prisma.Decimal(0);
+    // Prepare quotation items and group by sellerId
+    const itemsBySeller = {};
 
     for (const item of items) {
       const { productId, orderQuantity, orderUnit } = item;
@@ -125,9 +124,13 @@ export async function POST(request) {
 
       // Calculate calculatedPrice in INR
       const itemPrice = calculateItemPrice(orderQuantity, orderUnit, product.basePrice, product.baseUnit);
-      totalAmount = totalAmount.plus(itemPrice);
 
-      quotationItemsData.push({
+      const sellerId = product.sellerId;
+      if (!itemsBySeller[sellerId]) {
+        itemsBySeller[sellerId] = [];
+      }
+
+      itemsBySeller[sellerId].push({
         productId,
         orderUnit,
         orderQuantity: new Prisma.Decimal(orderQuantity),
@@ -136,32 +139,41 @@ export async function POST(request) {
       });
     }
 
-    // Save in transaction
-    const quotation = await prisma.$transaction(async (tx) => {
-      const q = await tx.quotation.create({
-        data: {
-          userId: session.userId,
-          totalAmount,
-          status: 'PENDING',
-          items: {
-            create: quotationItemsData.map(item => ({
-              productId: item.productId,
-              orderUnit: item.orderUnit,
-              orderQuantity: item.orderQuantity,
-              internalQuantity: item.internalQuantity,
-              calculatedPrice: item.calculatedPrice,
-            })),
-          },
-        },
-        include: {
-          items: { include: { product: true } },
-        },
-      });
+    // Save in transaction - create one quotation per seller
+    const createdQuotations = await prisma.$transaction(async (tx) => {
+      const results = [];
+      for (const sellerId of Object.keys(itemsBySeller)) {
+        const sellerItems = itemsBySeller[sellerId];
+        let sellerTotal = new Prisma.Decimal(0);
+        sellerItems.forEach(item => {
+          sellerTotal = sellerTotal.plus(item.calculatedPrice);
+        });
 
-      return q;
+        const q = await tx.quotation.create({
+          data: {
+            userId: session.userId,
+            totalAmount: sellerTotal,
+            status: 'PENDING',
+            items: {
+              create: sellerItems.map(item => ({
+                productId: item.productId,
+                orderUnit: item.orderUnit,
+                orderQuantity: item.orderQuantity,
+                internalQuantity: item.internalQuantity,
+                calculatedPrice: item.calculatedPrice,
+              })),
+            },
+          },
+          include: {
+            items: { include: { product: true } },
+          },
+        });
+        results.push(q);
+      }
+      return results;
     });
 
-    return NextResponse.json(quotation, { status: 201 });
+    return NextResponse.json(createdQuotations[0] || {}, { status: 201 });
   } catch (error) {
     console.error('Create quotation error:', error);
     return NextResponse.json({ error: error.message || 'Failed to place quotation' }, { status: 500 });

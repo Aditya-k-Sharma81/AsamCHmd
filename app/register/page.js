@@ -134,6 +134,8 @@ export default function RegisterPage() {
             />
           </div>
 
+
+
           <div>
             <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">
               Account Type / Role

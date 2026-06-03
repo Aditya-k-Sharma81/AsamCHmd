@@ -5,7 +5,7 @@ import { hashPassword, signToken } from '../../../../lib/auth';
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { email, password, name, role } = body;
+    const { email, password, name, role, address, phone } = body;
 
     if (!email || !password || !name) {
       return NextResponse.json(
@@ -44,6 +44,8 @@ export async function POST(request) {
         password: hashedPassword,
         name,
         role: userRole,
+        address: address || null,
+        phone: phone || null,
       },
     });
 

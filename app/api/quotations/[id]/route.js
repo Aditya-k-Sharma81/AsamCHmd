@@ -11,14 +11,14 @@ export async function PUT(request, props) {
 
     const cookieStore = await cookies();
     const session = await getSession(cookieStore);
-    if (!session || session.role !== 'ADMIN') {
+    if (!session || (session.role !== 'ADMIN' && session.role !== 'SELLER')) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const body = await request.json();
-    const { status } = body; // APPROVED, REJECTED, COMPLETED
+    const { status } = body; // APPROVED (Accepted), REJECTED, SHIPPED, DELIVERED, COMPLETED
 
-    if (!status || !['APPROVED', 'REJECTED', 'COMPLETED'].includes(status)) {
+    if (!status || !['APPROVED', 'REJECTED', 'SHIPPED', 'DELIVERED', 'COMPLETED'].includes(status)) {
       return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
     }
 
@@ -30,6 +30,14 @@ export async function PUT(request, props) {
 
     if (!quotation) {
       return NextResponse.json({ error: 'Quotation not found' }, { status: 444 });
+    }
+
+    // If Seller, verify they own at least one product in this quotation
+    if (session.role === 'SELLER') {
+      const ownsProduct = quotation.items.some(item => item.product.sellerId === session.userId);
+      if (!ownsProduct) {
+        return NextResponse.json({ error: 'Forbidden: You do not own any products in this order' }, { status: 403 });
+      }
     }
 
     // Deduct stock if the status is changing to APPROVED from PENDING/REJECTED
@@ -84,7 +92,7 @@ export async function PUT(request, props) {
     const updatedQuotation = await prisma.quotation.findUnique({
       where: { id },
       include: {
-        user: { select: { name: true, email: true } },
+        user: { select: { name: true, email: true, address: true, phone: true } },
         items: { include: { product: true } },
       },
     });
