@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Swal from 'sweetalert2';
 
 const DIMENSIONS = {
   WEIGHT: 'WEIGHT',
@@ -19,6 +20,16 @@ const UNITS = {
 
 export default function UserProductsPage() {
   const router = useRouter();
+
+  const fireAlert = (options) => {
+    return Swal.fire({
+      background: '#171717',
+      color: '#f5f5f5',
+      confirmButtonColor: '#10b981',
+      cancelButtonColor: '#ef4444',
+      ...options
+    });
+  };
 
   // Data states
   const [products, setProducts] = useState([]);
@@ -172,7 +183,11 @@ export default function UserProductsPage() {
   const handleConfirmCheckout = async (e) => {
     e.preventDefault();
     if (!profileName.trim() || !profilePhone.trim() || !profileAddress.trim()) {
-      alert('Full Name, Contact Phone, and Shipping Address are required.');
+      fireAlert({
+        title: 'Required Fields',
+        text: 'Full Name, Contact Phone, and Shipping Address are required.',
+        icon: 'warning'
+      });
       return;
     }
     setCheckoutLoading(true);
@@ -210,16 +225,29 @@ export default function UserProductsPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        alert(data.error || 'Failed to submit quotation');
+        fireAlert({
+          title: 'Failed to Submit',
+          text: data.error || 'Failed to submit quotation',
+          icon: 'error'
+        });
       } else {
         setCart([]);
         setShowCheckoutModal(false);
-        alert('Quotation submitted successfully! It is pending approval.');
-        router.push('/orders/history');
+        fireAlert({
+          title: 'Quotation Placed',
+          text: 'Quotation submitted successfully! It is pending approval.',
+          icon: 'success'
+        }).then(() => {
+          router.push('/orders/history');
+        });
       }
     } catch (err) {
       console.error(err);
-      alert('Failed to place quotation');
+      fireAlert({
+        title: 'Error',
+        text: 'Failed to place quotation',
+        icon: 'error'
+      });
     } finally {
       setCheckoutLoading(false);
     }

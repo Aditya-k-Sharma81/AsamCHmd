@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Swal from 'sweetalert2';
 
 export default function SellerProductsPage() {
   const [loading, setLoading] = useState(true);
@@ -27,18 +28,46 @@ export default function SellerProductsPage() {
   }, []);
 
   const handleDeleteProduct = async (id) => {
-    if (!confirm('Are you sure you want to delete this product? This action is permanent.')) return;
-    
-    try {
-      const res = await fetch(`/api/products/${id}`, { method: 'DELETE' });
-      if (res.ok) {
-        fetchProducts();
-      } else {
-        const data = await res.json();
-        alert(data.error || 'Failed to delete product');
+    const result = await Swal.fire({
+      title: 'Are you sure?',
+      text: 'Are you sure you want to delete this product? This action is permanent.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, delete it!',
+      cancelButtonText: 'No, keep it',
+      background: '#171717',
+      color: '#f5f5f5',
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#3b82f6',
+    });
+
+    if (result.isConfirmed) {
+      try {
+        const res = await fetch(`/api/products/${id}`, { method: 'DELETE' });
+        if (res.ok) {
+          fetchProducts();
+          Swal.fire({
+            title: 'Deleted!',
+            text: 'Your product has been deleted.',
+            icon: 'success',
+            background: '#171717',
+            color: '#f5f5f5',
+            confirmButtonColor: '#10b981',
+          });
+        } else {
+          const data = await res.json();
+          Swal.fire({
+            title: 'Error',
+            text: data.error || 'Failed to delete product',
+            icon: 'error',
+            background: '#171717',
+            color: '#f5f5f5',
+            confirmButtonColor: '#10b981',
+          });
+        }
+      } catch (err) {
+        console.error(err);
       }
-    } catch (err) {
-      console.error(err);
     }
   };
 

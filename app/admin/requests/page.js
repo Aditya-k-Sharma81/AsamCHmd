@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Swal from 'sweetalert2';
 
 export default function AdminRequestsPage() {
   const [loading, setLoading] = useState(true);
@@ -35,33 +36,90 @@ export default function AdminRequestsPage() {
 
       if (res.ok) {
         fetchRequests();
+        Swal.fire({
+          title: 'Approved!',
+          text: 'Request has been passed to sellers.',
+          icon: 'success',
+          background: '#171717',
+          color: '#f5f5f5',
+          confirmButtonColor: '#10b981',
+        });
       } else {
         const data = await res.json();
-        alert(data.error || 'Failed to approve request');
+        Swal.fire({
+          title: 'Error',
+          text: data.error || 'Failed to approve request',
+          icon: 'error',
+          background: '#171717',
+          color: '#f5f5f5',
+          confirmButtonColor: '#10b981',
+        });
       }
     } catch (err) {
       console.error(err);
-      alert('Error updating request status');
+      Swal.fire({
+        title: 'Error',
+        text: 'Error updating request status',
+        icon: 'error',
+        background: '#171717',
+        color: '#f5f5f5',
+        confirmButtonColor: '#10b981',
+      });
     }
   };
 
   const handleDeleteRequest = async (id) => {
-    if (!confirm('Are you sure you want to delete this request?')) return;
+    const result = await Swal.fire({
+      title: 'Delete Request?',
+      text: 'Are you sure you want to delete this request?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, delete it!',
+      cancelButtonText: 'No, keep it',
+      background: '#171717',
+      color: '#f5f5f5',
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#3b82f6',
+    });
 
-    try {
-      const res = await fetch(`/api/requests/${id}`, {
-        method: 'DELETE',
-      });
+    if (result.isConfirmed) {
+      try {
+        const res = await fetch(`/api/requests/${id}`, {
+          method: 'DELETE',
+        });
 
-      if (res.ok) {
-        fetchRequests();
-      } else {
-        const data = await res.json();
-        alert(data.error || 'Failed to delete request');
+        if (res.ok) {
+          fetchRequests();
+          Swal.fire({
+            title: 'Deleted!',
+            text: 'Request has been deleted.',
+            icon: 'success',
+            background: '#171717',
+            color: '#f5f5f5',
+            confirmButtonColor: '#10b981',
+          });
+        } else {
+          const data = await res.json();
+          Swal.fire({
+            title: 'Error',
+            text: data.error || 'Failed to delete request',
+            icon: 'error',
+            background: '#171717',
+            color: '#f5f5f5',
+            confirmButtonColor: '#10b981',
+          });
+        }
+      } catch (err) {
+        console.error(err);
+        Swal.fire({
+          title: 'Error',
+          text: 'Error deleting request',
+          icon: 'error',
+          background: '#171717',
+          color: '#f5f5f5',
+          confirmButtonColor: '#10b981',
+        });
       }
-    } catch (err) {
-      console.error(err);
-      alert('Error deleting request');
     }
   };
 

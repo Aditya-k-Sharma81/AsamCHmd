@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Swal from 'sweetalert2';
 
 export default function AdminOrdersPage() {
   const [loadingQuotations, setLoadingQuotations] = useState(true);
@@ -36,9 +37,24 @@ export default function AdminOrdersPage() {
 
       const data = await res.json();
       if (!res.ok) {
-        alert(data.error || 'Failed to update quotation');
+        Swal.fire({
+          title: 'Error',
+          text: data.error || 'Failed to update quotation',
+          icon: 'error',
+          background: '#171717',
+          color: '#f5f5f5',
+          confirmButtonColor: '#10b981',
+        });
       } else {
         fetchQuotations();
+        Swal.fire({
+          title: 'Status Updated',
+          text: `Order status successfully updated to ${status}.`,
+          icon: 'success',
+          background: '#171717',
+          color: '#f5f5f5',
+          confirmButtonColor: '#10b981',
+        });
       }
     } catch (err) {
       console.error(err);
