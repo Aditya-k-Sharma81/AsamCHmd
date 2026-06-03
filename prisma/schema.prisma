@@ -1,0 +1,106 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+enum Dimension {
+  WEIGHT
+  VOLUME
+  COUNT
+}
+
+enum OrderStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  COMPLETED
+}
+
+enum RequestStatus {
+  PENDING
+  ADDED
+}
+
+model User {
+  id             String           @id @default(uuid())
+  email          String           @unique
+  password       String
+  name           String
+  role           Role             @default(USER)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  quotations     Quotation[]
+  requests       ProductRequest[]
+  notifications  Notification[]
+}
+
+model Product {
+  id             String           @id @default(uuid())
+  sku            String           @unique
+  name           String
+  description    String?
+  category       String?
+  dimension      Dimension
+  baseUnit       String           // e.g. "kg", "g", "L", "mL", "items"
+  basePrice      Decimal          @db.Decimal(20, 8) // Price per baseUnit in INR
+  stockQuantity  Decimal          @db.Decimal(20, 8) // Total stock in internal base unit (g, mL, items)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  quotationItems QuotationItem[]
+}
+
+model Quotation {
+  id          String          @id @default(uuid())
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  status      OrderStatus     @default(PENDING)
+  totalAmount Decimal          @db.Decimal(20, 8) // Total in INR
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  items       QuotationItem[]
+}
+
+model QuotationItem {
+  id               String    @id @default(uuid())
+  quotation        Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  quotationId      String
+  product          Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId        String
+  orderUnit        String    // Unit user ordered, e.g. "g", "kg", "mL", "L", "items"
+  orderQuantity    Decimal   @db.Decimal(20, 8) // Quantity in orderUnit
+  internalQuantity Decimal   @db.Decimal(20, 8) // Quantity in internal base unit (g, mL, items)
+  calculatedPrice  Decimal   @db.Decimal(20, 8) // Calculated price in INR
+}
+
+model ProductRequest {
+  id                String        @id @default(uuid())
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId            String
+  productName       String
+  dimension         Dimension
+  requestedUnit     String
+  requestedQuantity Decimal?      @db.Decimal(20, 8)
+  status            RequestStatus @default(PENDING)
+  notes             String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  title     String
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
