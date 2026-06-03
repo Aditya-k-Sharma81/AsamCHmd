@@ -10,7 +10,7 @@ export default function RegisterPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('USER'); // Default is USER (Seller/User)
+  const [role, setRole] = useState('USER'); // USER, SELLER, ADMIN
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
@@ -40,9 +40,11 @@ export default function RegisterPage() {
       router.refresh();
       setTimeout(() => {
         if (data.user.role === 'ADMIN') {
-          router.push('/admin');
+          router.push('/admin/dashboard');
+        } else if (data.user.role === 'SELLER') {
+          router.push('/seller/dashboard');
         } else {
-          router.push('/dashboard');
+          router.push('/products');
         }
       }, 1500);
     } catch (err) {
@@ -136,28 +138,39 @@ export default function RegisterPage() {
             <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-2">
               Account Type / Role
             </label>
-            <div className="grid grid-cols-2 gap-2 bg-neutral-950/80 p-1 border border-neutral-800 rounded-xl">
+            <div className="grid grid-cols-3 gap-2 bg-neutral-950/80 p-1 border border-neutral-800 rounded-xl text-center">
               <button
                 type="button"
-                className={`py-2 text-xs font-bold rounded-lg transition-all duration-200 ${
+                className={`py-2 text-[10px] font-bold rounded-lg transition-all duration-200 ${
                   role === 'USER'
                     ? 'bg-neutral-800 text-emerald-400 border border-neutral-700 shadow-sm'
                     : 'text-neutral-400 hover:text-neutral-200'
                 }`}
                 onClick={() => setRole('USER')}
               >
-                Seller / User
+                Customer
               </button>
               <button
                 type="button"
-                className={`py-2 text-xs font-bold rounded-lg transition-all duration-200 ${
+                className={`py-2 text-[10px] font-bold rounded-lg transition-all duration-200 ${
+                  role === 'SELLER'
+                    ? 'bg-neutral-800 text-emerald-400 border border-neutral-700 shadow-sm'
+                    : 'text-neutral-400 hover:text-neutral-200'
+                }`}
+                onClick={() => setRole('SELLER')}
+              >
+                Seller
+              </button>
+              <button
+                type="button"
+                className={`py-2 text-[10px] font-bold rounded-lg transition-all duration-200 ${
                   role === 'ADMIN'
                     ? 'bg-neutral-800 text-emerald-400 border border-neutral-700 shadow-sm'
                     : 'text-neutral-400 hover:text-neutral-200'
                 }`}
                 onClick={() => setRole('ADMIN')}
               >
-                Administrator
+                Admin
               </button>
             </div>
           </div>

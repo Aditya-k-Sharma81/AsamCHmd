@@ -15,19 +15,48 @@ export async function proxy(request) {
       return NextResponse.redirect(url);
     }
     if (session.role !== 'ADMIN') {
-      return NextResponse.redirect(new URL('/dashboard', request.url));
+      // Redirect to their respective dashboards
+      if (session.role === 'SELLER') {
+        return NextResponse.redirect(new URL('/seller/dashboard', request.url));
+      }
+      return NextResponse.redirect(new URL('/products', request.url));
     }
   }
 
-  // Protect User/Seller Dashboard Routes
-  if (pathname.startsWith('/dashboard')) {
+  // Protect Seller Routes
+  if (pathname.startsWith('/seller')) {
     if (!session) {
       const url = new URL('/login', request.url);
       url.searchParams.set('callbackUrl', pathname);
       return NextResponse.redirect(url);
     }
-    if (session.role === 'ADMIN') {
-      return NextResponse.redirect(new URL('/admin', request.url));
+    if (session.role !== 'SELLER') {
+      if (session.role === 'ADMIN') {
+        return NextResponse.redirect(new URL('/admin/dashboard', request.url));
+      }
+      return NextResponse.redirect(new URL('/products', request.url));
+    }
+  }
+
+  // Protect User Routes (Browse Catalog, Orders, Profile)
+  const isUserRoute = 
+    pathname.startsWith('/products') || 
+    pathname.startsWith('/orders') || 
+    pathname.startsWith('/profile');
+
+  if (isUserRoute) {
+    if (!session) {
+      const url = new URL('/login', request.url);
+      url.searchParams.set('callbackUrl', pathname);
+      return NextResponse.redirect(url);
+    }
+    if (session.role !== 'USER') {
+      if (session.role === 'ADMIN') {
+        return NextResponse.redirect(new URL('/admin/dashboard', request.url));
+      }
+      if (session.role === 'SELLER') {
+        return NextResponse.redirect(new URL('/seller/dashboard', request.url));
+      }
     }
   }
 
@@ -35,9 +64,11 @@ export async function proxy(request) {
   if (pathname === '/login' || pathname === '/register') {
     if (session) {
       if (session.role === 'ADMIN') {
-        return NextResponse.redirect(new URL('/admin', request.url));
+        return NextResponse.redirect(new URL('/admin/dashboard', request.url));
+      } else if (session.role === 'SELLER') {
+        return NextResponse.redirect(new URL('/seller/dashboard', request.url));
       } else {
-        return NextResponse.redirect(new URL('/dashboard', request.url));
+        return NextResponse.redirect(new URL('/products', request.url));
       }
     }
   }
@@ -48,7 +79,13 @@ export async function proxy(request) {
 export const config = {
   matcher: [
     '/admin/:path*',
-    '/dashboard/:path*',
+    '/seller/:path*',
+    '/products/:path*',
+    '/products',
+    '/orders/:path*',
+    '/orders',
+    '/profile/:path*',
+    '/profile',
     '/login',
     '/register',
   ],

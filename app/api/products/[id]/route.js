@@ -4,7 +4,7 @@ import prisma from '../../../../lib/db';
 import { getSession } from '../../../../lib/auth';
 import { toInternalQuantity, UNITS } from '../../../../lib/conversion';
 
-// PUT: Update product (Admin only)
+// PUT: Update product (Admin or Seller owner)
 export async function PUT(request, props) {
   try {
     const params = await props.params;
@@ -12,7 +12,7 @@ export async function PUT(request, props) {
 
     const cookieStore = await cookies();
     const session = await getSession(cookieStore);
-    if (!session || session.role !== 'ADMIN') {
+    if (!session || !['ADMIN', 'SELLER'].includes(session.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -30,6 +30,11 @@ export async function PUT(request, props) {
 
     if (!currentProduct) {
       return NextResponse.json({ error: 'Product not found' }, { status: 444 });
+    }
+
+    // Authorization: Sellers can only update their own products
+    if (session.role === 'SELLER' && currentProduct.sellerId !== session.userId) {
+      return NextResponse.json({ error: 'Forbidden: You do not own this product' }, { status: 403 });
     }
 
     // Validate units config
@@ -75,7 +80,6 @@ export async function PUT(request, props) {
 
     // Restock Notification Hook: if stock went from 0 (or below) to positive
     if (oldStockNum <= 0 && newStockNum > 0) {
-      // Find pending requests for a matching product name (case-insensitive)
       const pendingRequests = await prisma.productRequest.findMany({
         where: {
           productName: { equals: name.trim(), mode: 'insensitive' },
@@ -84,7 +88,6 @@ export async function PUT(request, props) {
       });
 
       if (pendingRequests.length > 0) {
-        // Create notifications for each user
         const notificationPromises = pendingRequests.map((req) =>
           prisma.notification.create({
             data: {
@@ -95,7 +98,6 @@ export async function PUT(request, props) {
           })
         );
 
-        // Update requests status to ADDED
         const updateRequestPromises = pendingRequests.map((req) =>
           prisma.productRequest.update({
             where: { id: req.id },
@@ -114,7 +116,7 @@ export async function PUT(request, props) {
   }
 }
 
-// DELETE: Delete product (Admin only)
+// DELETE: Delete product (Admin or Seller owner)
 export async function DELETE(request, props) {
   try {
     const params = await props.params;
@@ -122,7 +124,7 @@ export async function DELETE(request, props) {
 
     const cookieStore = await cookies();
     const session = await getSession(cookieStore);
-    if (!session || session.role !== 'ADMIN') {
+    if (!session || !['ADMIN', 'SELLER'].includes(session.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -133,6 +135,11 @@ export async function DELETE(request, props) {
 
     if (!product) {
       return NextResponse.json({ error: 'Product not found' }, { status: 444 });
+    }
+
+    // Authorization: Sellers can only delete their own products
+    if (session.role === 'SELLER' && product.sellerId !== session.userId) {
+      return NextResponse.json({ error: 'Forbidden: You do not own this product' }, { status: 403 });
     }
 
     await prisma.product.delete({

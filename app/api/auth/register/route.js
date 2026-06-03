@@ -29,8 +29,13 @@ export async function POST(request) {
     // Hash the password
     const hashedPassword = await hashPassword(password);
 
-    // Set role (limit role to ADMIN or USER)
-    const userRole = role === 'ADMIN' ? 'ADMIN' : 'USER';
+    // Set role (ADMIN, SELLER, or USER)
+    let userRole = 'USER';
+    if (role === 'ADMIN') {
+      userRole = 'ADMIN';
+    } else if (role === 'SELLER') {
+      userRole = 'SELLER';
+    }
 
     // Create user
     const user = await prisma.user.create({

@@ -4,7 +4,7 @@ import prisma from '../../../lib/db';
 import { getSession } from '../../../lib/auth';
 import { toInternalQuantity, UNITS } from '../../../lib/conversion';
 
-// GET all products with filtering/search (accessible by authenticated users)
+// GET all products (with search/filter)
 export async function GET(request) {
   try {
     const cookieStore = await cookies();
@@ -17,8 +17,17 @@ export async function GET(request) {
     const search = searchParams.get('search') || '';
     const category = searchParams.get('category') || '';
     const dimension = searchParams.get('dimension') || '';
+    const sellerId = searchParams.get('sellerId') || '';
 
     const where = {};
+
+    // If user is a SELLER, they can ONLY view their own products
+    if (session.role === 'SELLER') {
+      where.sellerId = session.userId;
+    } else if (sellerId) {
+      // Admins/Users can filter by a specific seller
+      where.sellerId = sellerId;
+    }
 
     if (search) {
       where.OR = [
@@ -38,6 +47,9 @@ export async function GET(request) {
 
     const products = await prisma.product.findMany({
       where,
+      include: {
+        seller: { select: { name: true, email: true } },
+      },
       orderBy: { name: 'asc' },
     });
 
@@ -48,17 +60,17 @@ export async function GET(request) {
   }
 }
 
-// POST: Create product (Admin only)
+// POST: Create product (Admin or Seller only)
 export async function POST(request) {
   try {
     const cookieStore = await cookies();
     const session = await getSession(cookieStore);
-    if (!session || session.role !== 'ADMIN') {
+    if (!session || !['ADMIN', 'SELLER'].includes(session.role)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const body = await request.json();
-    const { sku, name, description, category, dimension, baseUnit, basePrice, initialStock } = body;
+    const { sku, name, description, category, dimension, baseUnit, basePrice, initialStock, targetSellerId } = body;
 
     if (!sku || !name || !dimension || !baseUnit || basePrice === undefined || initialStock === undefined) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -82,6 +94,13 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Unit does not match dimension' }, { status: 400 });
     }
 
+    // Determine owner (sellerId)
+    // If admin and targetSellerId is provided, use it, else use own userId
+    let productSellerId = session.userId;
+    if (session.role === 'ADMIN' && targetSellerId) {
+      productSellerId = targetSellerId;
+    }
+
     // Convert stock to internal quantity
     const internalStock = toInternalQuantity(initialStock, baseUnit);
 
@@ -96,12 +115,12 @@ export async function POST(request) {
         baseUnit,
         basePrice: parseFloat(basePrice),
         stockQuantity: internalStock.toNumber(),
+        sellerId: productSellerId,
       },
     });
 
     // Notification Hook: If stock is positive, notify users who requested this product
     if (parseFloat(initialStock) > 0) {
-      // Find pending requests for a matching product name (case-insensitive)
       const pendingRequests = await prisma.productRequest.findMany({
         where: {
           productName: { equals: name.trim(), mode: 'insensitive' },
@@ -110,7 +129,6 @@ export async function POST(request) {
       });
 
       if (pendingRequests.length > 0) {
-        // Create notifications for each user
         const notificationPromises = pendingRequests.map((req) =>
           prisma.notification.create({
             data: {
@@ -121,7 +139,6 @@ export async function POST(request) {
           })
         );
 
-        // Update requests status to ADDED
         const updateRequestPromises = pendingRequests.map((req) =>
           prisma.productRequest.update({
             where: { id: req.id },

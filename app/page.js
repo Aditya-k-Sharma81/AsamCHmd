@@ -11,8 +11,10 @@ export default async function Home() {
   }
 
   if (session.role === 'ADMIN') {
-    redirect('/admin');
+    redirect('/admin/dashboard');
+  } else if (session.role === 'SELLER') {
+    redirect('/seller/dashboard');
   } else {
-    redirect('/dashboard');
+    redirect('/products');
   }
 }

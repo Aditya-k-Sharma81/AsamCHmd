@@ -17,11 +17,37 @@ export async function GET(request) {
     let quotations;
 
     if (session.role === 'ADMIN') {
-      // Admin sees all quotations with user info
+      // Admin sees all quotations with user info and all products
       quotations = await prisma.quotation.findMany({
         include: {
           user: { select: { name: true, email: true } },
-          items: { include: { product: true } },
+          items: { include: { product: { include: { seller: { select: { name: true, email: true } } } } } },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+    } else if (session.role === 'SELLER') {
+      // Seller sees quotations containing at least one of their products
+      // We filter the items relation to only include items belonging to this seller
+      quotations = await prisma.quotation.findMany({
+        where: {
+          items: {
+            some: {
+              product: {
+                sellerId: session.userId,
+              },
+            },
+          },
+        },
+        include: {
+          user: { select: { name: true, email: true } },
+          items: {
+            where: {
+              product: {
+                sellerId: session.userId,
+              },
+            },
+            include: { product: true },
+          },
         },
         orderBy: { createdAt: 'desc' },
       });
@@ -30,7 +56,7 @@ export async function GET(request) {
       quotations = await prisma.quotation.findMany({
         where: { userId: session.userId },
         include: {
-          items: { include: { product: true } },
+          items: { include: { product: { include: { seller: { select: { name: true, email: true } } } } } },
         },
         orderBy: { createdAt: 'desc' },
       });
@@ -43,13 +69,13 @@ export async function GET(request) {
   }
 }
 
-// POST: Place a quotation
+// POST: Place a quotation (Users only)
 export async function POST(request) {
   try {
     const cookieStore = await cookies();
     const session = await getSession(cookieStore);
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!session || session.role !== 'USER') {
+      return NextResponse.json({ error: 'Unauthorized: Only users can place orders' }, { status: 401 });
     }
 
     const body = await request.json();
@@ -63,7 +89,6 @@ export async function POST(request) {
     const quotationItemsData = [];
     let totalAmount = new Prisma.Decimal(0);
 
-    // We fetch products in database first to ensure availability
     for (const item of items) {
       const { productId, orderQuantity, orderUnit } = item;
 
@@ -90,7 +115,6 @@ export async function POST(request) {
       // Check stock availability
       const stockAvailable = new Prisma.Decimal(product.stockQuantity);
       if (internalQty.gt(stockAvailable)) {
-        // Show stock error using the unit ordered
         const availableInOrderUnit = stockAvailable.div(
           orderUnit === 'kg' || orderUnit === 'L' ? 1000 : 1
         );

@@ -14,7 +14,8 @@ export async function GET(request) {
 
     let requests;
 
-    if (session.role === 'ADMIN') {
+    if (session.role === 'ADMIN' || session.role === 'SELLER') {
+      // Admins and Sellers can see all user requests
       requests = await prisma.productRequest.findMany({
         include: {
           user: { select: { name: true, email: true } },
@@ -22,6 +23,7 @@ export async function GET(request) {
         orderBy: { createdAt: 'desc' },
       });
     } else {
+      // Users only see their own requests
       requests = await prisma.productRequest.findMany({
         where: { userId: session.userId },
         orderBy: { createdAt: 'desc' },
@@ -35,13 +37,13 @@ export async function GET(request) {
   }
 }
 
-// POST: Submit a product request
+// POST: Submit a product request (Users only)
 export async function POST(request) {
   try {
     const cookieStore = await cookies();
     const session = await getSession(cookieStore);
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!session || session.role !== 'USER') {
+      return NextResponse.json({ error: 'Unauthorized: Only users can make requests' }, { status: 401 });
     }
 
     const body = await request.json();

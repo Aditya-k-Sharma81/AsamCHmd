@@ -37,9 +37,11 @@ export default function LoginPage(props) {
       // Wait a tiny bit for middleware cookie check, then push
       setTimeout(() => {
         if (data.user.role === 'ADMIN') {
-          router.push('/admin');
+          router.push('/admin/dashboard');
+        } else if (data.user.role === 'SELLER') {
+          router.push('/seller/dashboard');
         } else {
-          router.push('/dashboard');
+          router.push('/products');
         }
       }, 100);
     } catch (err) {
