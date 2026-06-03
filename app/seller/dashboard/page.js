@@ -70,8 +70,11 @@ export default async function SellerDashboardPage() {
     }
   });
 
-  // Get catalog requests
+  // Get catalog requests approved by admin
   const recentRequests = await prisma.productRequest.findMany({
+    where: {
+      status: { in: ['APPROVED_BY_ADMIN', 'ADDED'] },
+    },
     take: 5,
     orderBy: { createdAt: 'desc' },
     include: {
@@ -181,7 +184,7 @@ export default async function SellerDashboardPage() {
                     </p>
                   </div>
                   <div>
-                    {req.status === 'PENDING' ? (
+                    {req.status === 'APPROVED_BY_ADMIN' ? (
                       <Link 
                         href={`/seller/products/add?prefill=${encodeURIComponent(JSON.stringify({ name: req.productName, dimension: req.dimension, unit: req.requestedUnit, qty: req.requestedQuantity }))}`}
                         className="bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-bold px-2.5 py-1 rounded text-[10px] transition-colors"

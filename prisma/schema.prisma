@@ -29,7 +29,8 @@ enum OrderStatus {
 }
 
 enum RequestStatus {
-  PENDING
+  PENDING_ADMIN
+  APPROVED_BY_ADMIN
   ADDED
 }
 
@@ -97,7 +98,7 @@ model ProductRequest {
   dimension         Dimension
   requestedUnit     String
   requestedQuantity Decimal?      @db.Decimal(20, 8)
-  status            RequestStatus @default(PENDING)
+  status            RequestStatus @default(PENDING_ADMIN)
   notes             String?
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt

@@ -124,7 +124,7 @@ export async function POST(request) {
       const pendingRequests = await prisma.productRequest.findMany({
         where: {
           productName: { equals: name.trim(), mode: 'insensitive' },
-          status: 'PENDING',
+          status: { in: ['PENDING_ADMIN', 'APPROVED_BY_ADMIN'] },
         },
       });
 

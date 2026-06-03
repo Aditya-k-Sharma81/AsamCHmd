@@ -42,6 +42,15 @@ export default function AdminLayout({ children }) {
       ),
     },
     {
+      name: 'Catalog Requests',
+      path: '/admin/requests',
+      icon: (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0a2 2 0 01-2 2H6a2 2 0 01-2-2m16 0V9a2 2 0 00-2-2H6a2 2 0 00-2 2v2m7.5 4h3m-9 0h3m-3-4h6m-6-4h6" />
+        </svg>
+      ),
+    },
+    {
       name: 'Customers / Users',
       path: '/admin/users',
       icon: (

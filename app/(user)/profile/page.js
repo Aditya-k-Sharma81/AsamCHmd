@@ -201,11 +201,13 @@ export default function UserProfilePage() {
                       </td>
                       <td className="px-4 py-3 text-right">
                         <span className={`inline-flex px-2 py-0.5 rounded text-[8px] font-extrabold border ${
-                          req.status === 'PENDING'
-                            ? 'bg-amber-950/20 border-amber-800/60 text-amber-300'
-                            : 'bg-emerald-950/20 border-emerald-800/60 text-emerald-300'
+                          req.status === 'PENDING_ADMIN' ? 'bg-amber-950/20 border-amber-800/60 text-amber-300' :
+                          req.status === 'APPROVED_BY_ADMIN' ? 'bg-indigo-950/20 border-indigo-800/60 text-indigo-300' :
+                          'bg-emerald-950/20 border-emerald-800/60 text-emerald-300'
                         }`}>
-                          {req.status === 'PENDING' ? 'PENDING' : 'ADDED / RESTOCKED'}
+                          {req.status === 'PENDING_ADMIN' && 'PENDING ADMIN'}
+                          {req.status === 'APPROVED_BY_ADMIN' && 'PASSED TO SELLERS'}
+                          {req.status === 'ADDED' && 'ADDED / RESTOCKED'}
                         </span>
                       </td>
                     </tr>

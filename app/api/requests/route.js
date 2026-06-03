@@ -14,9 +14,20 @@ export async function GET(request) {
 
     let requests;
 
-    if (session.role === 'ADMIN' || session.role === 'SELLER') {
-      // Admins and Sellers can see all user requests
+    if (session.role === 'ADMIN') {
+      // Admins see all user requests
       requests = await prisma.productRequest.findMany({
+        include: {
+          user: { select: { name: true, email: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+    } else if (session.role === 'SELLER') {
+      // Sellers only see requests approved by admin
+      requests = await prisma.productRequest.findMany({
+        where: {
+          status: { in: ['APPROVED_BY_ADMIN', 'ADDED'] },
+        },
         include: {
           user: { select: { name: true, email: true } },
         },
@@ -63,7 +74,7 @@ export async function POST(request) {
         requestedUnit,
         requestedQuantity: qty,
         notes: notes?.trim(),
-        status: 'PENDING',
+        status: 'PENDING_ADMIN',
       },
     });
 

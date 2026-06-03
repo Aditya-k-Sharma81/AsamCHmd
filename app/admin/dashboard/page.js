@@ -18,7 +18,7 @@ export default async function AdminDashboardPage() {
   const sellerCount = await prisma.user.count({ where: { role: 'SELLER' } });
   const productCount = await prisma.product.count();
   const orderCount = await prisma.quotation.count();
-  const pendingRequestsCount = await prisma.productRequest.count({ where: { status: 'PENDING' } });
+  const pendingRequestsCount = await prisma.productRequest.count({ where: { status: 'PENDING_ADMIN' } });
   const pendingOrdersCount = await prisma.quotation.count({ where: { status: 'PENDING' } });
 
   // Calculate total system revenue from non-pending/non-rejected orders
@@ -134,9 +134,9 @@ export default async function AdminDashboardPage() {
         <div className="bg-neutral-900/30 border border-neutral-850 rounded-2xl p-5 shadow-xl">
           <div className="flex justify-between items-center border-b border-neutral-800 pb-3 mb-4">
             <h3 className="font-extrabold text-sm uppercase tracking-wider text-neutral-300">Catalog Requests</h3>
-            <span className="text-[10px] text-indigo-400 font-bold bg-indigo-950 border border-indigo-800 px-2.5 py-0.5 rounded-full">
-              {pendingRequestsCount} Pending
-            </span>
+            <Link href="/admin/requests" className="text-[10px] text-emerald-400 font-bold hover:text-emerald-300 transition-colors">
+              Manage Requests &rarr;
+            </Link>
           </div>
 
           {recentRequests.length === 0 ? (
@@ -153,11 +153,13 @@ export default async function AdminDashboardPage() {
                   </div>
                   <div>
                     <span className={`inline-block px-1.5 py-0.5 rounded text-[8px] font-extrabold uppercase border ${
-                      req.status === 'PENDING'
-                        ? 'bg-amber-950/20 border-amber-800/60 text-amber-300'
-                        : 'bg-emerald-950/20 border-emerald-800/60 text-emerald-300'
+                      req.status === 'PENDING_ADMIN' ? 'bg-amber-950/20 border-amber-800/60 text-amber-300' :
+                      req.status === 'APPROVED_BY_ADMIN' ? 'bg-indigo-950/20 border-indigo-800/60 text-indigo-300' :
+                      'bg-emerald-950/20 border-emerald-800/60 text-emerald-300'
                     }`}>
-                      {req.status}
+                      {req.status === 'PENDING_ADMIN' && 'Pending'}
+                      {req.status === 'APPROVED_BY_ADMIN' && 'Passed'}
+                      {req.status === 'ADDED' && 'Resolved'}
                     </span>
                   </div>
                 </div>
