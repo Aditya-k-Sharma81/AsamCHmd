@@ -23,32 +23,29 @@ Admins supervise the entire ecosystem.
 - **Route Namespace**: `/admin/dashboard`, `/admin/products`, `/admin/orders`, `/admin/users`, `/admin/sellers`
 - **Dashboard**: Stats on customer registrations, seller catalog count, total product counts, and recent activity.
 - **Global Inventory**: CRUD catalog management across all products. Admins can create and assign products to any seller.
-- **Order Approvals**: Reviews all quotation orders, shows step-by-step mathematical conversion audit trails, and deducts product stocks transactionally upon approval.
+- **Global Order Overview**: Reviews all checkout order shipments, shows step-by-step mathematical conversion audit trails, and includes a **Flipkart-style visual progress tracker** for each order.
 - **Customer Tracking**: Lists registered customers, registration dates, and orders count.
 - **Seller Tracking**: Lists registered sellers and product count.
 
 ---
 
 ### 💼 2. Seller Panel
-Sellers manage their own products and track orders.
+Sellers manage their own products and fulfill orders.
 - **Route Namespace**: `/seller/dashboard`, `/seller/products`, `/seller/products/add`, `/seller/orders`
 - **Dashboard**: Track self-listed product counts, revenue earned, and pending orders. Includes user requests to identify catalog demand.
 - **Product Catalog CRUD**: Manage descriptions, categories, prices, and stock levels. Sellers can only modify/delete products they own.
-- **Order Logs**: Lists quotations containing the seller's products, automatically scoped to filter out items belonging to other sellers and calculate their subtotal.
+- **Independent Order Fulfillment**: Lists quotations containing the seller's products (split per seller during checkout). Sellers can accept/reject, mark as shipped, and mark as delivered their orders independently, complete with a visual progress tracker bar. Stock is transactionally deducted upon accepting the order (`APPROVED`).
 
 ---
 
 ### 👥 3. User Panel
-Customers browse the catalog and place order quotations.
+Customers browse the catalog, place orders, and track deliveries.
 - **Route Namespace**: `/products`, `/orders/history`, `/profile`
 - **Catalog Browser**: Search, filter by category/dimension, checkout cart.
-- **Live Unit Conversion Calculator**: Select any compatible unit (e.g. `g` when rate is set in `kg`) and view:
-  - Converted base quantity.
-  - Converted internal stored quantity.
-  - Total estimated cost.
-  - Real-time stock validation.
+- **Multi-Seller Order Splitting**: Checkout cart items are automatically grouped by seller, generating separate quotation orders so each seller can fulfill their shipment independently without stock or approval conflicts.
+- **Flipkart-style Progress Tracker**: A beautiful, real-time visual progress bar (**Placed → Approved → Shipped → Delivered**) lets customers track the lifecycle of each order individually.
 - **Catalog Requests**: Request out-of-stock or unlisted chemicals.
-- **Order History**: Track quotation history and statuses.
+- **Profile Customization**: Manage shipping address and contact phone numbers directly from the profile dashboard.
 - **Notifications Hub**: Alerts users when requested chemicals are added or restocked.
 
 ---
@@ -141,13 +138,21 @@ Open [http://localhost:3000](http://localhost:3000).
    - Observe the live calculator displaying `0.5000 kg` base quantity and `₹250.00` estimated cost.
    - Add to quotation and submit the cart order.
 
-4. **Seller Views Order**:
-   - Log in as the Seller.
+4. **Seller Fulfills Order**:
+   - Log in as the Seller (`/login`).
    - Go to **Orders History** (`/seller/orders`). Expand the order; you will see the client's request for `500 g` and your subtotal of `₹250.00`.
+   - Click **Accept Order**. This action verifies and deducts stock in a secure database transaction, updating the status to `APPROVED`.
+   - The card will show a **Flipkart-style visual tracking progress bar** highlighting that the order is "Approved".
+   - Click **Mark as Shipped** to advance status to `SHIPPED` (progress bar advances).
+   - Click **Mark as Delivered** to advance status to `DELIVERED`.
 
-5. **Admin Approves**:
+5. **Customer Tracks Order**:
+   - Log in as the Customer.
+   - Go to **Orders History** (`/orders/history`).
+   - Observe the real-time visual progress bar showing the order's state (Placed → Approved → Shipped → Delivered) updated live by the seller.
+
+6. **Admin Supervises**:
    - Log in as the Admin.
    - Go to **Orders & Quotations** (`/admin/orders`).
-   - Expand the quotation to verify user details, items, and the mathematical audit verification formulas.
-   - Click **Approve & Deduct Stock**.
-   - Check **Products Catalog** (`/admin/products`); the stock of Aspirin will have correctly decreased to `9.5000 kg`.
+   - Expand the quotation to verify user details, items, mathematical audit verification formulas, and global tracking state.
+   - Admins can also mark orders as completed or check the stock reduction in the Products Catalog.
