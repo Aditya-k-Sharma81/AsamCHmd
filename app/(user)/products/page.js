@@ -48,6 +48,34 @@ export default function UserProductsPage() {
   const [reqError, setReqError] = useState('');
   const [reqSuccess, setReqSuccess] = useState('');
 
+  // Profile states for Checkout Form
+  const [profileName, setProfileName] = useState('');
+  const [profileEmail, setProfileEmail] = useState('');
+  const [profilePhone, setProfilePhone] = useState('');
+  const [profileAddress, setProfileAddress] = useState('');
+  const [showCheckoutModal, setShowCheckoutModal] = useState(false);
+  const [saveToProfile, setSaveToProfile] = useState(true);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
+
+  const fetchProfile = async () => {
+    try {
+      const res = await fetch('/api/auth/me');
+      if (res.ok) {
+        const data = await res.json();
+        setProfileName(data.name || '');
+        setProfileEmail(data.email || '');
+        setProfilePhone(data.phone || '');
+        setProfileAddress(data.address || '');
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
+    fetchProfile();
+  }, []);
+
   const fetchProducts = async () => {
     setLoadingProducts(true);
     try {
@@ -136,16 +164,43 @@ export default function UserProductsPage() {
     setCart(cart.filter(item => item.product.id !== productId));
   };
 
-  const handleSubmitQuotation = async () => {
+  const handleOpenCheckout = () => {
     if (cart.length === 0) return;
+    setShowCheckoutModal(true);
+  };
 
-    const items = cart.map(item => ({
-      productId: item.product.id,
-      orderQuantity: item.orderQuantity,
-      orderUnit: item.orderUnit,
-    }));
+  const handleConfirmCheckout = async (e) => {
+    e.preventDefault();
+    if (!profileName.trim() || !profilePhone.trim() || !profileAddress.trim()) {
+      alert('Full Name, Contact Phone, and Shipping Address are required.');
+      return;
+    }
+    setCheckoutLoading(true);
 
     try {
+      // 1. Save updated details to profile if checked
+      if (saveToProfile) {
+        const profileRes = await fetch('/api/auth/me', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: profileName.trim(),
+            phone: profilePhone.trim(),
+            address: profileAddress.trim(),
+          }),
+        });
+        if (!profileRes.ok) {
+          console.warn('Failed to update profile details.');
+        }
+      }
+
+      // 2. Submit quotation
+      const items = cart.map(item => ({
+        productId: item.product.id,
+        orderQuantity: item.orderQuantity,
+        orderUnit: item.orderUnit,
+      }));
+
       const res = await fetch('/api/quotations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -158,12 +213,15 @@ export default function UserProductsPage() {
         alert(data.error || 'Failed to submit quotation');
       } else {
         setCart([]);
-        alert('Quotation submitted successfully! It is pending approval by the Admin.');
+        setShowCheckoutModal(false);
+        alert('Quotation submitted successfully! It is pending approval.');
         router.push('/orders/history');
       }
     } catch (err) {
       console.error(err);
       alert('Failed to place quotation');
+    } finally {
+      setCheckoutLoading(false);
     }
   };
 
@@ -418,7 +476,7 @@ export default function UserProductsPage() {
               <span className="font-black text-emerald-400 text-base">{formatCurrency(cartTotal)}</span>
             </div>
             <button
-              onClick={handleSubmitQuotation}
+              onClick={handleOpenCheckout}
               className="w-full bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-black py-3 rounded-xl shadow-lg shadow-emerald-500/10 text-xs transition-colors"
             >
               Submit Quotation Order
@@ -693,6 +751,117 @@ export default function UserProductsPage() {
                     </svg>
                   ) : (
                     <span>Submit Request</span>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* CHECKOUT MODAL / ORDER FORM */}
+      {showCheckoutModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="relative w-full max-w-md bg-neutral-900 border border-neutral-800 rounded-2xl p-6 shadow-2xl space-y-4">
+            <div className="flex justify-between items-center border-b border-neutral-800 pb-3">
+              <h3 className="font-extrabold text-sm uppercase tracking-wider text-neutral-100">
+                Confirm Order & Delivery Details
+              </h3>
+              <button 
+                onClick={() => setShowCheckoutModal(false)}
+                className="text-neutral-500 hover:text-neutral-300 transition-colors"
+                disabled={checkoutLoading}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmCheckout} className="space-y-4 text-xs">
+              <div>
+                <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-2">Registered Email</label>
+                <input
+                  type="email"
+                  disabled
+                  className="w-full bg-neutral-950/60 border border-neutral-850 rounded-xl px-3 py-2.5 text-neutral-500 outline-none cursor-not-allowed font-mono"
+                  value={profileEmail}
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-2">Full Name</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Your Full Name"
+                  className="w-full bg-neutral-950 border border-neutral-800 focus:border-emerald-500/80 rounded-xl px-3 py-2.5 text-neutral-200 outline-none"
+                  value={profileName}
+                  onChange={(e) => setProfileName(e.target.value)}
+                  disabled={checkoutLoading}
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-2">Contact Phone Number</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. +91 98765 43210"
+                  className="w-full bg-neutral-950 border border-neutral-800 focus:border-emerald-500/80 rounded-xl px-3 py-2.5 text-neutral-200 outline-none"
+                  value={profilePhone}
+                  onChange={(e) => setProfilePhone(e.target.value)}
+                  disabled={checkoutLoading}
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-neutral-400 uppercase tracking-wider mb-2">Fulfillment / Shipping Address</label>
+                <textarea
+                  required
+                  placeholder="Enter full delivery address..."
+                  className="w-full bg-neutral-950 border border-neutral-800 focus:border-emerald-500/80 rounded-xl px-3 py-2 text-neutral-200 outline-none h-20 resize-none"
+                  value={profileAddress}
+                  onChange={(e) => setProfileAddress(e.target.value)}
+                  disabled={checkoutLoading}
+                />
+              </div>
+
+              <div className="flex items-center space-x-2 py-2">
+                <input
+                  type="checkbox"
+                  id="saveProfileCheckbox"
+                  className="rounded border-neutral-800 text-emerald-500 focus:ring-emerald-500 bg-neutral-950 w-4 h-4 cursor-pointer"
+                  checked={saveToProfile}
+                  onChange={(e) => setSaveToProfile(e.target.checked)}
+                  disabled={checkoutLoading}
+                />
+                <label htmlFor="saveProfileCheckbox" className="text-[10px] font-semibold text-neutral-400 cursor-pointer select-none">
+                  Save contact details to my profile for future orders
+                </label>
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-3 border-t border-neutral-800">
+                <button
+                  type="button"
+                  onClick={() => setShowCheckoutModal(false)}
+                  className="bg-neutral-850 hover:bg-neutral-800 border border-neutral-800 text-neutral-400 px-4 py-2.5 rounded-xl text-xs font-bold transition-colors"
+                  disabled={checkoutLoading}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={checkoutLoading}
+                  className="bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-black px-5 py-2.5 rounded-xl text-xs shadow-lg shadow-emerald-500/10 transition-colors flex items-center space-x-2"
+                >
+                  {checkoutLoading ? (
+                    <svg className="animate-spin h-4 w-4 text-neutral-950" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                  ) : (
+                    <span>Confirm & Place Order</span>
                   )}
                 </button>
               </div>
